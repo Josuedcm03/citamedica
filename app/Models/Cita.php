@@ -12,7 +12,7 @@ class Cita extends Model
 
     protected $fillable = [
         'paciente_id',
-        'medico_id',
+        'empleado_id',
         'consultorio_id',
         'especialidad_id',
         'fecha_hora_inicio',
@@ -21,11 +21,14 @@ class Cita extends Model
         'motivo',
         'notas',
         'creado_en',
+        'resultado',
+        'resultado_publicado_at',
     ];
 
     protected $casts = [
         'fecha_hora_inicio' => 'datetime',
         'duracion_minutos' => 'integer',
+        'resultado_publicado_at' => 'datetime',
     ];
 
     /** @return BelongsTo<Paciente,Cita> */
@@ -34,10 +37,10 @@ class Cita extends Model
         return $this->belongsTo(Paciente::class, 'paciente_id');
     }
 
-    /** @return BelongsTo<Medico,Cita> */
-    public function medico(): BelongsTo
+    /** @return BelongsTo<Empleado,Cita> */
+    public function empleado(): BelongsTo
     {
-        return $this->belongsTo(Medico::class, 'medico_id');
+        return $this->belongsTo(Empleado::class, 'empleado_id');
     }
 
     /** @return BelongsTo<Consultorio,Cita> */
