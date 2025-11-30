@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('cita', function (Blueprint $table) {
             $table->id();
             $table->foreignId('paciente_id')->constrained('paciente')->cascadeOnUpdate()->restrictOnDelete();
-            $table->foreignId('medico_id')->constrained('medico')->cascadeOnUpdate()->restrictOnDelete();
+            $table->foreignId('empleado_id')->constrained('empleado')->cascadeOnUpdate()->restrictOnDelete();
             $table->foreignId('consultorio_id')->nullable()->constrained('consultorio')->cascadeOnUpdate()->nullOnDelete();
             $table->foreignId('especialidad_id')->nullable()->constrained('especialidad')->cascadeOnUpdate()->nullOnDelete();
             $table->dateTime('fecha_hora_inicio');
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->text('notas')->nullable();
             $table->timestamp('creado_en')->useCurrent();
 
-            $table->unique(['medico_id', 'fecha_hora_inicio'], 'ux_cita_medico_fhi');
+            $table->unique(['empleado_id', 'fecha_hora_inicio'], 'ux_cita_empleado_fhi');
             $table->index('paciente_id', 'ix_cita_paciente');
             $table->index('estado', 'ix_cita_estado');
             $table->index('fecha_hora_inicio', 'ix_cita_fhi');

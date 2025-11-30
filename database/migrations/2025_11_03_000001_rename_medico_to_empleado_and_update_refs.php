@@ -9,9 +9,33 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Si ya estamos en esquema basado en empleado, no hay nada que renombrar.
+        if (! Schema::hasTable('medico')) {
+            return;
+        }
+
         // 1) Rename base table medico -> empleado
-        if (Schema::hasTable('medico')) {
+        if (Schema::hasTable('medico') && ! Schema::hasTable('empleado')) {
             Schema::rename('medico', 'empleado');
+        } elseif (Schema::hasTable('medico') && Schema::hasTable('empleado')) {
+            // Si la tabla ya fue renombrada en una corrida previa, elimina el sobrante para evitar choques
+            // Primero quitamos llaves foráneas que apunten a medico para no bloquear el drop
+            $database = Schema::getConnection()->getDatabaseName();
+            $constraints = DB::select(
+                "SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE TABLE_SCHEMA = ? AND REFERENCED_TABLE_NAME = 'medico'",
+                [$database]
+            );
+
+            foreach ($constraints as $constraint) {
+                $table = $constraint->TABLE_NAME ?? null;
+                $name = $constraint->CONSTRAINT_NAME ?? null;
+                if ($table && $name) {
+                    try { DB::statement("ALTER TABLE {$table} DROP FOREIGN KEY {$name}"); } catch (Throwable $e) {}
+                }
+            }
+
+            Schema::drop('medico');
         }
 
         // 2) Update cita.medico_id -> cita.empleado_id and indexes/FKs
@@ -29,11 +53,27 @@ return new class extends Migration
 
             Schema::table('cita', function (Blueprint $table) {
                 // Drop old unique index if exists
+                // Drop FK on medico_id first so the unique index is not locked by it
+                if (Schema::hasColumn('cita', 'medico_id')) {
+                    // Detect FK name to avoid dropping a non-existing constraint
+                    $database = Schema::getConnection()->getDatabaseName();
+                    $constraints = DB::select(
+                        "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+                         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'cita' AND COLUMN_NAME = 'medico_id'",
+                        [$database]
+                    );
+                    foreach ($constraints as $constraint) {
+                        $name = $constraint->CONSTRAINT_NAME ?? null;
+                        if ($name) {
+                            try { DB::statement("ALTER TABLE cita DROP FOREIGN KEY {$name}"); } catch (Throwable $e) {}
+                        }
+                    }
+                }
+
                 try { $table->dropUnique('ux_cita_medico_fhi'); } catch (Throwable $e) {}
 
-                // Drop FK on medico_id then column
+                // Drop column after indexes are cleared
                 if (Schema::hasColumn('cita', 'medico_id')) {
-                    try { $table->dropForeign(['medico_id']); } catch (Throwable $e) {}
                     $table->dropColumn('medico_id');
                 }
 
@@ -45,7 +85,40 @@ return new class extends Migration
 
         // 3) Rename horario_medico -> horario_empleado and column medico_id -> empleado_id
         if (Schema::hasTable('horario_medico')) {
-            Schema::rename('horario_medico', 'horario_empleado');
+            // Si horario_empleado ya existe, limpiamos horario_medico obsoleto para evitar choque en rename
+            if (Schema::hasTable('horario_empleado')) {
+                $database = Schema::getConnection()->getDatabaseName();
+                $constraints = DB::select(
+                    "SELECT CONSTRAINT_NAME, COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE
+                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'horario_medico'",
+                    [$database]
+                );
+                foreach ($constraints as $constraint) {
+                    $name = $constraint->CONSTRAINT_NAME ?? null;
+                    $column = $constraint->COLUMN_NAME ?? null;
+                    if ($name && $column) {
+                        try { DB::statement("ALTER TABLE horario_medico DROP FOREIGN KEY {$name}"); } catch (Throwable $e) {}
+                        try { DB::statement("ALTER TABLE horario_medico DROP INDEX {$name}"); } catch (Throwable $e) {}
+                    }
+                }
+
+                // Drop check constraints if exist (MySQL 8)
+                $checks = DB::select(
+                    "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS
+                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'horario_medico' AND CONSTRAINT_TYPE = 'CHECK'",
+                    [$database]
+                );
+                foreach ($checks as $check) {
+                    $checkName = $check->CONSTRAINT_NAME ?? null;
+                    if ($checkName) {
+                        try { DB::statement("ALTER TABLE horario_medico DROP CHECK {$checkName}"); } catch (Throwable $e) {}
+                    }
+                }
+
+                Schema::drop('horario_medico');
+            } else {
+                Schema::rename('horario_medico', 'horario_empleado');
+            }
         }
 
         if (Schema::hasTable('horario_empleado')) {
@@ -62,12 +135,26 @@ return new class extends Migration
             }
 
             Schema::table('horario_empleado', function (Blueprint $table) {
-                // Drop old index if present
+                // Drop old FK/column using actual constraint names (avoid failing if name differs)
+                if (Schema::hasColumn('horario_empleado', 'medico_id')) {
+                    $database = Schema::getConnection()->getDatabaseName();
+                    $constraints = DB::select(
+                        "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+                         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'horario_empleado' AND COLUMN_NAME = 'medico_id'",
+                        [$database]
+                    );
+                    foreach ($constraints as $constraint) {
+                        $name = $constraint->CONSTRAINT_NAME ?? null;
+                        if ($name) {
+                        try { DB::statement("ALTER TABLE horario_empleado DROP FOREIGN KEY {$name}"); } catch (Throwable $e) {}
+                        }
+                    }
+                }
+
+                // Drop old index if present (after FK is gone to avoid constraint conflicts)
                 try { $table->dropIndex('ix_horario_medico'); } catch (Throwable $e) {}
 
-                // Drop old FK/column
                 if (Schema::hasColumn('horario_empleado', 'medico_id')) {
-                    try { $table->dropForeign(['medico_id']); } catch (Throwable $e) {}
                     $table->dropColumn('medico_id');
                 }
 
@@ -106,6 +193,11 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Si ya estamos en esquema "empleado" desde el inicio, no revertimos nada.
+        if (! Schema::hasTable('medico') && Schema::hasTable('empleado')) {
+            return;
+        }
+
         // Best-effort down migration
         // 1) Restore pivot table
         if (!Schema::hasTable('medico_especialidad') && Schema::hasTable('empleado_especialidad')) {
@@ -122,6 +214,8 @@ return new class extends Migration
         // 2) Revert horario_empleado
         if (Schema::hasTable('horario_empleado')) {
             Schema::table('horario_empleado', function (Blueprint $table) {
+                // Drop FK before index to avoid "needed in a foreign key constraint"
+                try { $table->dropForeign(['empleado_id']); } catch (Throwable $e) {}
                 try { $table->dropIndex('ix_horario_empleado'); } catch (Throwable $e) {}
                 if (!Schema::hasColumn('horario_empleado', 'medico_id')) {
                     $table->unsignedBigInteger('medico_id')->nullable();
@@ -131,7 +225,6 @@ return new class extends Migration
                 DB::statement('UPDATE horario_empleado SET medico_id = empleado_id');
             }
             Schema::table('horario_empleado', function (Blueprint $table) {
-                try { $table->dropForeign(['empleado_id']); } catch (Throwable $e) {}
                 $table->dropColumn('empleado_id');
                 $table->index(['medico_id', 'dia_semana', 'hora_inicio'], 'ix_horario_medico');
             });
@@ -162,4 +255,3 @@ return new class extends Migration
         }
     }
 };
-
