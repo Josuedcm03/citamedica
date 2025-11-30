@@ -2,57 +2,57 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Cita\PublicarResultadoRequest;
+use App\Http\Requests\Cita\StoreCitaRequest;
+use App\Http\Requests\Cita\UpdateCitaRequest;
+use App\Http\Resources\CitaResource;
 use App\Models\Cita;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Carbon;
 
 class CitaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Cita::query()
+        $perPage = (int) $request->query('per_page', 15);
+        $search = $request->query('search');
+
+        $citas = Cita::query()
             ->with(['paciente', 'empleado', 'consultorio', 'especialidad'])
+            ->when($search, function ($query, $value) {
+                $query->where('motivo', 'like', "%{$value}%")
+                    ->orWhereHas('paciente', function ($pacienteQuery) use ($value) {
+                        $pacienteQuery->where('nombre', 'like', "%{$value}%");
+                    })
+                    ->orWhereHas('empleado', function ($empleadoQuery) use ($value) {
+                        $empleadoQuery->where('nombre', 'like', "%{$value}%");
+                    });
+            })
             ->orderBy('fecha_hora_inicio', 'desc')
-            ->paginate(15);
+            ->paginate($perPage);
+
+        return CitaResource::collection($citas);
     }
 
-    public function store(Request $request)
+    public function store(StoreCitaRequest $request)
     {
-        $data = $request->validate([
-            'paciente_id' => 'required|exists:paciente,id',
-            'empleado_id' => 'required|exists:empleado,id',
-            'consultorio_id' => 'nullable|exists:consultorio,id',
-            'especialidad_id' => 'nullable|exists:especialidad,id',
-            'fecha_hora_inicio' => 'required|date',
-            'duracion_minutos' => 'nullable|integer|min:5|max:480',
-            'motivo' => 'nullable|string|max:240',
-            'notas' => 'nullable|string',
-        ]);
-        $cita = Cita::create($data);
-        return response()->json($cita->load(['paciente','empleado']), Response::HTTP_CREATED);
+        $cita = Cita::create($request->validated());
+
+        return CitaResource::make($cita->load(['paciente', 'empleado', 'consultorio', 'especialidad']))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function show(Cita $cita)
     {
-        return $cita->load(['paciente','empleado','consultorio','especialidad']);
+        return CitaResource::make($cita->load(['paciente', 'empleado', 'consultorio', 'especialidad']));
     }
 
-    public function update(Request $request, Cita $cita)
+    public function update(UpdateCitaRequest $request, Cita $cita)
     {
-        $data = $request->validate([
-            'paciente_id' => 'sometimes|exists:paciente,id',
-            'empleado_id' => 'sometimes|exists:empleado,id',
-            'consultorio_id' => 'nullable|exists:consultorio,id',
-            'especialidad_id' => 'nullable|exists:especialidad,id',
-            'fecha_hora_inicio' => 'sometimes|date',
-            'duracion_minutos' => 'nullable|integer|min:5|max:480',
-            'motivo' => 'nullable|string|max:240',
-            'notas' => 'nullable|string',
-            'estado' => 'nullable|in:pendiente,confirmada,atendida,cancelada',
-        ]);
-        $cita->update($data);
-        return $cita->fresh(['paciente','empleado']);
+        $cita->update($request->validated());
+
+        return CitaResource::make($cita->fresh(['paciente', 'empleado', 'consultorio', 'especialidad']));
     }
 
     public function destroy(Cita $cita)
@@ -65,32 +65,28 @@ class CitaController extends Controller
     {
         $cita->estado = 'confirmada';
         $cita->save();
-        return $cita;
+        return CitaResource::make($cita->fresh(['paciente', 'empleado', 'consultorio', 'especialidad']));
     }
 
     public function cancelar(Cita $cita)
     {
         $cita->estado = 'cancelada';
         $cita->save();
-        return $cita;
+        return CitaResource::make($cita->fresh(['paciente', 'empleado', 'consultorio', 'especialidad']));
     }
 
     public function marcarAtendida(Cita $cita)
     {
         $cita->estado = 'atendida';
         $cita->save();
-        return $cita;
+        return CitaResource::make($cita->fresh(['paciente', 'empleado', 'consultorio', 'especialidad']));
     }
 
-    public function publicarResultado(Request $request, Cita $cita)
+    public function publicarResultado(PublicarResultadoRequest $request, Cita $cita)
     {
-        $data = $request->validate([
-            'resultado' => 'required|string',
-        ]);
-        $cita->resultado = $data['resultado'];
+        $cita->resultado = $request->validated()['resultado'];
         $cita->resultado_publicado_at = now();
         $cita->save();
-        return $cita;
+        return CitaResource::make($cita->fresh(['paciente', 'empleado', 'consultorio', 'especialidad']));
     }
 }
-

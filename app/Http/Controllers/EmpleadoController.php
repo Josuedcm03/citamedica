@@ -2,44 +2,50 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Empleado\StoreEmpleadoRequest;
+use App\Http\Requests\Empleado\UpdateEmpleadoRequest;
+use App\Http\Resources\EmpleadoResource;
 use App\Models\Empleado;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class EmpleadoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Empleado::query()->orderBy('id', 'desc')->paginate(15);
+        $perPage = (int) $request->query('per_page', 15);
+        $search = $request->query('search');
+
+        $empleados = Empleado::query()
+            ->when($search, function ($query, $value) {
+                $query->where('nombre', 'like', "%{$value}%")
+                    ->orWhere('email', 'like', "%{$value}%");
+            })
+            ->orderBy('id', 'desc')
+            ->paginate($perPage);
+
+        return EmpleadoResource::collection($empleados);
     }
 
-    public function store(Request $request)
+    public function store(StoreEmpleadoRequest $request)
     {
-        $data = $request->validate([
-            'nombre' => 'required|string|max:120',
-            'telefono' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:120|unique:empleado,email',
-            'activo' => 'boolean',
-        ]);
-        $empleado = Empleado::create($data);
-        return response()->json($empleado, Response::HTTP_CREATED);
+        $empleado = Empleado::create($request->validated());
+
+        return EmpleadoResource::make($empleado)
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function show(Empleado $empleado)
     {
-        return $empleado;
+        return EmpleadoResource::make($empleado);
     }
 
-    public function update(Request $request, Empleado $empleado)
+    public function update(UpdateEmpleadoRequest $request, Empleado $empleado)
     {
-        $data = $request->validate([
-            'nombre' => 'sometimes|required|string|max:120',
-            'telefono' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:120|unique:empleado,email,' . $empleado->id,
-            'activo' => 'boolean',
-        ]);
-        $empleado->update($data);
-        return $empleado;
+        $empleado->update($request->validated());
+
+        return EmpleadoResource::make($empleado);
     }
 
     public function destroy(Empleado $empleado)
@@ -48,4 +54,3 @@ class EmpleadoController extends Controller
         return response()->noContent();
     }
 }
-

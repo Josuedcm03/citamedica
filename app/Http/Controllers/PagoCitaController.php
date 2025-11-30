@@ -2,47 +2,54 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PagoCita\StorePagoCitaRequest;
+use App\Http\Requests\PagoCita\UpdatePagoCitaRequest;
+use App\Http\Resources\PagoCitaResource;
 use App\Models\PagoCita;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class PagoCitaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return PagoCita::query()->with('cita')->orderBy('id', 'desc')->paginate(15);
+        $perPage = (int) $request->query('per_page', 15);
+        $search = $request->query('search');
+
+        $pagos = PagoCita::query()
+            ->with(['cita.paciente', 'cita.empleado'])
+            ->when($search, function ($query, $value) {
+                $query->where('transaccion_ref', 'like', "%{$value}%")
+                    ->orWhere('metodo', 'like', "%{$value}%")
+                    ->orWhereHas('cita', function ($citaQuery) use ($value) {
+                        $citaQuery->where('motivo', 'like', "%{$value}%");
+                    });
+            })
+            ->orderBy('id', 'desc')
+            ->paginate($perPage);
+
+        return PagoCitaResource::collection($pagos);
     }
 
-    public function store(Request $request)
+    public function store(StorePagoCitaRequest $request)
     {
-        $data = $request->validate([
-            'cita_id' => 'required|exists:cita,id',
-            'monto' => 'required|numeric|min:0',
-            'metodo' => 'required|string|max:40',
-            'estado' => 'nullable|in:pendiente,pagado,fallido,reembolsado',
-            'transaccion_ref' => 'nullable|string|max:120',
-            'pagado_en' => 'nullable|date',
-        ]);
-        $pago = PagoCita::create($data);
-        return response()->json($pago->load('cita'), Response::HTTP_CREATED);
+        $pago = PagoCita::create($request->validated());
+
+        return PagoCitaResource::make($pago->load(['cita.paciente', 'cita.empleado']))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function show(PagoCita $pago_cita)
     {
-        return $pago_cita->load('cita');
+        return PagoCitaResource::make($pago_cita->load(['cita.paciente', 'cita.empleado']));
     }
 
-    public function update(Request $request, PagoCita $pago_cita)
+    public function update(UpdatePagoCitaRequest $request, PagoCita $pago_cita)
     {
-        $data = $request->validate([
-            'monto' => 'sometimes|numeric|min:0',
-            'metodo' => 'sometimes|string|max:40',
-            'estado' => 'nullable|in:pendiente,pagado,fallido,reembolsado',
-            'transaccion_ref' => 'nullable|string|max:120',
-            'pagado_en' => 'nullable|date',
-        ]);
-        $pago_cita->update($data);
-        return $pago_cita->load('cita');
+        $pago_cita->update($request->validated());
+
+        return PagoCitaResource::make($pago_cita->load(['cita.paciente', 'cita.empleado']));
     }
 
     public function destroy(PagoCita $pago_cita)

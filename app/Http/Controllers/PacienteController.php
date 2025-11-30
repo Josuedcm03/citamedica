@@ -2,46 +2,52 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Paciente\StorePacienteRequest;
+use App\Http\Requests\Paciente\UpdatePacienteRequest;
+use App\Http\Resources\PacienteResource;
 use App\Models\Paciente;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class PacienteController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Paciente::query()->orderBy('id', 'desc')->paginate(15);
+        $perPage = (int) $request->query('per_page', 15);
+        $search = $request->query('search');
+
+        $pacientes = Paciente::query()
+            ->when($search, function ($query, $value) {
+                $query->where(function ($subQuery) use ($value) {
+                    $subQuery->where('nombre', 'like', "%{$value}%")
+                        ->orWhere('documento', 'like', "%{$value}%");
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->paginate($perPage);
+
+        return PacienteResource::collection($pacientes);
     }
 
-    public function store(Request $request)
+    public function store(StorePacienteRequest $request)
     {
-        $data = $request->validate([
-            'nombre' => 'required|string|max:120',
-            'documento' => 'required|string|max:60',
-            'fecha_nacimiento' => 'nullable|date',
-            'telefono' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:120',
-        ]);
-        $paciente = Paciente::create($data);
-        return response()->json($paciente, Response::HTTP_CREATED);
+        $paciente = Paciente::create($request->validated());
+
+        return PacienteResource::make($paciente)
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function show(Paciente $paciente)
     {
-        return $paciente;
+        return PacienteResource::make($paciente);
     }
 
-    public function update(Request $request, Paciente $paciente)
+    public function update(UpdatePacienteRequest $request, Paciente $paciente)
     {
-        $data = $request->validate([
-            'nombre' => 'sometimes|required|string|max:120',
-            'documento' => 'sometimes|required|string|max:60',
-            'fecha_nacimiento' => 'nullable|date',
-            'telefono' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:120',
-        ]);
-        $paciente->update($data);
-        return $paciente;
+        $paciente->update($request->validated());
+
+        return PacienteResource::make($paciente);
     }
 
     public function destroy(Paciente $paciente)
@@ -50,4 +56,3 @@ class PacienteController extends Controller
         return response()->noContent();
     }
 }
-
