@@ -6,6 +6,8 @@ use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\PagoCitaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ConsultorioController;
+use App\Http\Controllers\EspecialidadController;
 
 Route::post('auth/register', [AuthController::class, 'register']);
 Route::post('auth/login', [AuthController::class, 'login']);
@@ -14,6 +16,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
+    Route::apiResource('consultorios', ConsultorioController::class);
+    Route::apiResource('especialidades', EspecialidadController::class);
     Route::apiResource('empleados', EmpleadoController::class);
     Route::apiResource('pacientes', PacienteController::class);
     Route::apiResource('citas', CitaController::class);

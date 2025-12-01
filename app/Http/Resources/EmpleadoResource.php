@@ -5,8 +5,8 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Consultorio */
-class ConsultorioResource extends JsonResource
+/** @mixin \App\Models\Empleado */
+class EmpleadoResource extends JsonResource
 {
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
@@ -14,7 +14,9 @@ class ConsultorioResource extends JsonResource
         return [
             'id' => $this->id,
             'nombre' => $this->nombre,
-            'ubicacion' => $this->ubicacion,
+            'telefono' => $this->telefono,
+            'email' => $this->email,
+            'activo' => $this->activo,
         ];
     }
 }
