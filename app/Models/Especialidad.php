@@ -15,10 +15,10 @@ class Especialidad extends Model
         'nombre',
     ];
 
-    /** @return BelongsToMany<Medico> */
-    public function medicos(): BelongsToMany
+    /** @return BelongsToMany<Empleado> */
+    public function empleados(): BelongsToMany
     {
-        return $this->belongsToMany(Medico::class, 'medico_especialidad', 'especialidad_id', 'medico_id');
+        return $this->belongsToMany(Empleado::class, 'empleado_especialidad', 'especialidad_id', 'empleado_id');
     }
 
     /** @return HasMany<Cita> */

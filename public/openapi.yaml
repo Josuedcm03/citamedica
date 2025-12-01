@@ -1,0 +1,698 @@
+openapi: 3.0.3
+info:
+  title: API de Citas Médicas
+  version: 1.0.0
+  description: >-
+    Documentación de referencia para el API de citas médicas. Incluye endpoints de autenticación,
+    gestión de pacientes, empleados, citas y pagos de cita.
+servers:
+  - url: /api
+paths:
+  /auth/register:
+    post:
+      summary: Registrar usuario
+      tags: [Autenticación]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                password_confirmation:
+                  type: string
+              required: [name, email, password, password_confirmation]
+      responses:
+        '201':
+          description: Usuario registrado
+  /auth/login:
+    post:
+      summary: Iniciar sesión
+      tags: [Autenticación]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required: [email, password]
+      responses:
+        '200':
+          description: Token de acceso devuelto
+  /auth/me:
+    get:
+      summary: Perfil del usuario autenticado
+      tags: [Autenticación]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Datos del usuario
+  /auth/logout:
+    post:
+      summary: Cerrar sesión
+      tags: [Autenticación]
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Sesión cerrada
+  /pacientes:
+    get:
+      summary: Listar pacientes
+      tags: [Pacientes]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Listado paginado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PacientePagination'
+    post:
+      summary: Crear paciente
+      tags: [Pacientes]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PacienteInput'
+      responses:
+        '201':
+          description: Paciente creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paciente'
+  /pacientes/{paciente}:
+    get:
+      summary: Ver paciente
+      tags: [Pacientes]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PacienteId'
+      responses:
+        '200':
+          description: Paciente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paciente'
+    put:
+      summary: Actualizar paciente
+      tags: [Pacientes]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PacienteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PacienteInput'
+      responses:
+        '200':
+          description: Paciente actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paciente'
+    delete:
+      summary: Eliminar paciente
+      tags: [Pacientes]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PacienteId'
+      responses:
+        '204':
+          description: Eliminado
+  /empleados:
+    get:
+      summary: Listar empleados
+      tags: [Empleados]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Listado paginado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmpleadoPagination'
+    post:
+      summary: Crear empleado
+      tags: [Empleados]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpleadoInput'
+      responses:
+        '201':
+          description: Empleado creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empleado'
+  /empleados/{empleado}:
+    get:
+      summary: Ver empleado
+      tags: [Empleados]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmpleadoId'
+      responses:
+        '200':
+          description: Empleado encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empleado'
+    put:
+      summary: Actualizar empleado
+      tags: [Empleados]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmpleadoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpleadoInput'
+      responses:
+        '200':
+          description: Empleado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empleado'
+    delete:
+      summary: Eliminar empleado
+      tags: [Empleados]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmpleadoId'
+      responses:
+        '204':
+          description: Eliminado
+  /citas:
+    get:
+      summary: Listar citas
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Listado de citas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CitaPagination'
+    post:
+      summary: Crear cita
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CitaInput'
+      responses:
+        '201':
+          description: Cita creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+  /citas/{cita}:
+    get:
+      summary: Ver cita
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      responses:
+        '200':
+          description: Cita encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+    put:
+      summary: Actualizar cita
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CitaInput'
+      responses:
+        '200':
+          description: Cita actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+    delete:
+      summary: Eliminar cita
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      responses:
+        '204':
+          description: Eliminada
+  /citas/{cita}/confirmar:
+    post:
+      summary: Confirmar cita
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      responses:
+        '200':
+          description: Cita confirmada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+  /citas/{cita}/cancelar:
+    post:
+      summary: Cancelar cita
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      responses:
+        '200':
+          description: Cita cancelada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+  /citas/{cita}/atendida:
+    post:
+      summary: Marcar cita como atendida
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      responses:
+        '200':
+          description: Cita atendida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+  /citas/{cita}/publicar-resultado:
+    post:
+      summary: Publicar resultado de cita
+      tags: [Citas]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CitaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resultado:
+                  type: string
+              required: [resultado]
+      responses:
+        '200':
+          description: Resultado publicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cita'
+  /pagos-cita:
+    get:
+      summary: Listar pagos de cita
+      tags: [Pagos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Listado paginado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagoCitaPagination'
+    post:
+      summary: Crear pago de cita
+      tags: [Pagos]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PagoCitaInput'
+      responses:
+        '201':
+          description: Pago creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagoCita'
+  /pagos-cita/{pago_cita}:
+    get:
+      summary: Ver pago de cita
+      tags: [Pagos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PagoCitaId'
+      responses:
+        '200':
+          description: Pago encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagoCita'
+    put:
+      summary: Actualizar pago de cita
+      tags: [Pagos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PagoCitaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PagoCitaInput'
+      responses:
+        '200':
+          description: Pago actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagoCita'
+    delete:
+      summary: Eliminar pago de cita
+      tags: [Pagos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PagoCitaId'
+      responses:
+        '204':
+          description: Eliminado
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PacienteId:
+      name: paciente
+      in: path
+      required: true
+      schema:
+        type: integer
+    EmpleadoId:
+      name: empleado
+      in: path
+      required: true
+      schema:
+        type: integer
+    CitaId:
+      name: cita
+      in: path
+      required: true
+      schema:
+        type: integer
+    PagoCitaId:
+      name: pago_cita
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    Paciente:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+        documento:
+          type: string
+        fecha_nacimiento:
+          type: string
+          format: date
+        telefono:
+          type: string
+        email:
+          type: string
+    PacienteInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        documento:
+          type: string
+        fecha_nacimiento:
+          type: string
+          format: date
+        telefono:
+          type: string
+        email:
+          type: string
+          format: email
+      required: [nombre, documento]
+    PacientePagination:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Paciente'
+    Empleado:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+        telefono:
+          type: string
+        email:
+          type: string
+          format: email
+        activo:
+          type: boolean
+    EmpleadoInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        telefono:
+          type: string
+        email:
+          type: string
+          format: email
+        activo:
+          type: boolean
+      required: [nombre]
+    EmpleadoPagination:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Empleado'
+    Cita:
+      type: object
+      properties:
+        id:
+          type: integer
+        paciente_id:
+          type: integer
+        empleado_id:
+          type: integer
+        consultorio_id:
+          type: integer
+          nullable: true
+        especialidad_id:
+          type: integer
+          nullable: true
+        fecha_hora_inicio:
+          type: string
+          format: date-time
+        duracion_minutos:
+          type: integer
+          nullable: true
+        estado:
+          type: string
+        motivo:
+          type: string
+        notas:
+          type: string
+        resultado:
+          type: string
+          nullable: true
+        paciente:
+          $ref: '#/components/schemas/Paciente'
+        empleado:
+          $ref: '#/components/schemas/Empleado'
+    CitaInput:
+      type: object
+      properties:
+        paciente_id:
+          type: integer
+        empleado_id:
+          type: integer
+        consultorio_id:
+          type: integer
+          nullable: true
+        especialidad_id:
+          type: integer
+          nullable: true
+        fecha_hora_inicio:
+          type: string
+          format: date-time
+        duracion_minutos:
+          type: integer
+        motivo:
+          type: string
+        notas:
+          type: string
+        estado:
+          type: string
+      required: [paciente_id, empleado_id, fecha_hora_inicio]
+    CitaPagination:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cita'
+    PagoCita:
+      type: object
+      properties:
+        id:
+          type: integer
+        cita_id:
+          type: integer
+        monto:
+          type: number
+        metodo:
+          type: string
+        estado:
+          type: string
+        transaccion_ref:
+          type: string
+        pagado_en:
+          type: string
+          format: date-time
+          nullable: true
+        cita:
+          $ref: '#/components/schemas/Cita'
+    PagoCitaInput:
+      type: object
+      properties:
+        cita_id:
+          type: integer
+        monto:
+          type: number
+        metodo:
+          type: string
+        estado:
+          type: string
+        transaccion_ref:
+          type: string
+        pagado_en:
+          type: string
+          format: date-time
+      required: [cita_id, monto, metodo]
+    PagoCitaPagination:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PagoCita'

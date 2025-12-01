@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Medico extends Model
+class Empleado extends Model
 {
-    protected $table = 'medico';
+    protected $table = 'empleado';
     public $timestamps = false;
 
     protected $fillable = [
@@ -25,18 +25,19 @@ class Medico extends Model
     /** @return BelongsToMany<Especialidad> */
     public function especialidades(): BelongsToMany
     {
-        return $this->belongsToMany(Especialidad::class, 'medico_especialidad', 'medico_id', 'especialidad_id');
+        return $this->belongsToMany(Especialidad::class, 'empleado_especialidad', 'empleado_id', 'especialidad_id');
     }
 
-    /** @return HasMany<HorarioMedico> */
+    /** @return HasMany<HorarioEmpleado> */
     public function horarios(): HasMany
     {
-        return $this->hasMany(HorarioMedico::class, 'medico_id');
+        return $this->hasMany(HorarioEmpleado::class, 'empleado_id');
     }
 
     /** @return HasMany<Cita> */
     public function citas(): HasMany
     {
-        return $this->hasMany(Cita::class, 'medico_id');
+        return $this->hasMany(Cita::class, 'empleado_id');
     }
 }
+

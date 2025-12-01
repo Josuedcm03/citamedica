@@ -15,10 +15,10 @@ class Consultorio extends Model
         'ubicacion',
     ];
 
-    /** @return HasMany<HorarioMedico> */
-    public function horariosMedicos(): HasMany
+    /** @return HasMany<HorarioEmpleado> */
+    public function horariosEmpleados(): HasMany
     {
-        return $this->hasMany(HorarioMedico::class, 'consultorio_id');
+        return $this->hasMany(HorarioEmpleado::class, 'consultorio_id');
     }
 
     /** @return HasMany<Cita> */

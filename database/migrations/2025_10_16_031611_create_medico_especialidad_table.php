@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('medico_especialidad', function (Blueprint $table) {
-            $table->unsignedBigInteger('medico_id');
+        Schema::create('empleado_especialidad', function (Blueprint $table) {
+            $table->unsignedBigInteger('empleado_id');
             $table->unsignedBigInteger('especialidad_id');
 
-            $table->primary(['medico_id', 'especialidad_id']);
+            $table->primary(['empleado_id', 'especialidad_id']);
 
-            $table->foreign('medico_id', 'fk_me_medico')
-                ->references('id')->on('medico')
+            $table->foreign('empleado_id', 'fk_me_empleado')
+                ->references('id')->on('empleado')
                 ->cascadeOnUpdate()->cascadeOnDelete();
 
             $table->foreign('especialidad_id', 'fk_me_especialidad')
@@ -32,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('medico_especialidad');
+        Schema::dropIfExists('empleado_especialidad');
     }
 };
